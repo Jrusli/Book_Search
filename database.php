@@ -44,23 +44,33 @@ try {
         throw new mysqli_sql_exception("Table creation failed: " . $conn->error);
     }
 
-    // Commented out the message
-    // echo "Database and table setup completed!";
+    $createTableQuery = "CREATE TABLE IF NOT EXISTS employees (
+        employee_id INT PRIMARY KEY,
+        name VARCHAR(100),
+        position VARCHAR(100),
+        department VARCHAR(100),
+        salary DECIMAL(10, 2)
+    )";
+
+    if (!$conn->query($createTableQuery)) {
+        throw new mysqli_sql_exception("Table creation failed: " . $conn->error);
+    }
+
+
 } catch (mysqli_sql_exception $e) {
     echo "Error: " . $e->getMessage();
     exit;
 }
 
-// Automatically integrate CSV data
-$csvFilePath = 'C:\xampp\htdocs\myproject\books.csv'; // Update this path to the location of your CSV file
+
+$csvFilePath = 'C:\xampp\htdocs\Library_Search\books.csv';
 
 if (file_exists($csvFilePath)) {
     $csvFile = fopen($csvFilePath, 'r');
-    fgetcsv($csvFile); // Skip the header row
+    fgetcsv($csvFile); 
 
     $rowCount = 0;
     while (($row = fgetcsv($csvFile)) !== FALSE && $rowCount < 1000) {
-        // Ensure correct data types
         $isbn = $row[5];
         $authors = $row[7];
         $original_publication_year = (int)$row[8];
@@ -87,6 +97,7 @@ if (file_exists($csvFilePath)) {
 }
 
 // Handle search functionality
+// Handle search functionality
 $searchResults = [];
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['search'])) {
     $searchCategory = $_GET['category'];
@@ -103,6 +114,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['search'])) {
 // Fetch all books to display
 $result = $conn->query("SELECT * FROM books ORDER BY created_at DESC");
 $books = $result->fetch_all(MYSQLI_ASSOC);
+
+// Automatically integrate CSV data for employees
+$csvFilePath = 'C:\xampp\htdocs\Library_Search\employee.csv'; // Update this path to the location of your CSV file
+
+if (file_exists($csvFilePath)) {
+    $csvFile = fopen($csvFilePath, 'r');
+    fgetcsv($csvFile); // Skip the header row
+
+    while (($row = fgetcsv($csvFile)) !== FALSE) {
+        // Ensure correct data types
+        $employee_id = (int)$row[0];
+        $name = $row[1];
+        $position = $row[2];
+        $department = $row[3];
+        $salary = (float)$row[4];
+
+        // Use INSERT IGNORE to avoid duplicate entry errors
+        $stmt = $conn->prepare("INSERT IGNORE INTO employees (employee_id, name, position, department, salary) VALUES (?, ?, ?, ?, ?)");
+        $stmt->bind_param("isssd", $employee_id, $name, $position, $department, $salary);
+
+        if (!$stmt->execute()) {
+            echo "Error inserting row: " . $stmt->error . "<br>";
+        }
+    }
+
+    fclose($csvFile);
+    //echo "CSV data uploaded successfully!";
+} else {
+    echo "CSV file not found.";
+}
+
+// Fetch all employees to display
+$result = $conn->query("SELECT * FROM employees ORDER BY employee_id ASC");
+$employees = $result->fetch_all(MYSQLI_ASSOC);
 ?>
 
 <!DOCTYPE html>
@@ -110,109 +155,197 @@ $books = $result->fetch_all(MYSQLI_ASSOC);
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Library Management</title>
+    <title>Random Online Library Query</title>
     <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #e0f7fa;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+            padding: 0;
+        }
+        h1 {
+            background-color: #00796b;
+            color: #ffffff;
+            padding: 20px;
+            width: 100%;
+            text-align: center;
+            margin: 0;
+        }
+        .button-container {
+            margin: 20px 0;
+        }
+        button {
+            background-color: #00796b;
+            color: #ffffff;
+            border: none;
+            padding: 10px 20px;
+            margin: 0 10px;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #004d40;
+        }
         .table-container {
+            display: none;
             overflow-x: auto;
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+            width: 90%;
         }
         table {
             width: 100%;
             border-collapse: collapse;
+            margin-top: 20px;
         }
         th, td {
-            padding: 8px 12px;
-            border: 1px solid #ddd;
+            padding: 12px;
+            border: 1px solid #b0bec5;
+            text-align: left;
+        }
+        th {
+            background-color: #00796b;
+            color: #ffffff;
+        }
+        tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+        form {
+            margin-bottom: 20px;
+        }
+        label, select, input, button {
+            margin-right: 10px;
         }
     </style>
 </head>
 <body>
-    <h1>Library Management System</h1>
+    <h1>Random Online Library Query</h1>
 
-    <h2>Search for Books</h2>
-    <form method="GET">
-        <label>Category:
-            <select name="category">
-                <option value="title">Title</option>
-                <option value="authors">Author</option>
-                <option value="average_rating">Rating</option>
+    <div class="button-container">
+        <button onclick="showTable('booksTable')">Show Book Search</button>
+        <button onclick="showTable('allBooksTable')">Show Book</button>
+        <button onclick="showTable('employeesTable')">Show Employees</button>
+        <form action="login.php" method="get" style="display: inline;">
+            <button type="submit">Logout</button>
+    </div>
+
+    <div id="booksTable" class="table-container">
+        <h2>Book Search Results</h2>
+        <form method="GET" action="">
+            <label for="category">Search by:</label>
+            <select name="category" id="category">
                 <option value="isbn">ISBN</option>
-                <option value="id">ID</option>
+                <option value="authors">Authors</option>
+                <option value="original_publication_year">Year</option>
+                <option value="title">Title</option>
+                <option value="average_rating">Rating</option>
             </select>
-        </label>
-        <label>Query: <input type="text" name="query" required></label>
-        <button type="submit" name="search">Search</button>
-    </form>
+            <input type="text" name="query" placeholder="Search...">
+            <input type="hidden" name="search" value="1">
+            <button type="submit">Search</button>
+        </form>
 
-    <h2>Search Results</h2>
-    <?php if (count($searchResults) > 0): ?>
-        <div class="table-container">
+        <?php if (!empty($searchResults)): ?>
             <table>
                 <thead>
                     <tr>
-                        <th>ID</th>
                         <th>ISBN</th>
                         <th>Authors</th>
-                        <th>Original Publication Year</th>
+                        <th>Year</th>
                         <th>Title</th>
-                        <th>Average Rating</th>
+                        <th>Rating</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php foreach ($searchResults as $book): ?>
                         <tr>
-                            <td><?= $book['id'] ?></td>
-                            <td><?= $book['isbn'] ?></td>
-                            <td><?= $book['authors'] ?></td>
-                            <td><?= $book['original_publication_year'] ?></td>
-                            <td><?= $book['title'] ?></td>
-                            <td><?= $book['average_rating'] ?></td>
+                            <td><?php echo htmlspecialchars($book['isbn']); ?></td>
+                            <td><?php echo htmlspecialchars($book['authors']); ?></td>
+                            <td><?php echo htmlspecialchars($book['original_publication_year']); ?></td>
+                            <td><?php echo htmlspecialchars($book['title']); ?></td>
+                            <td><?php echo htmlspecialchars($book['average_rating']); ?></td>
                         </tr>
                     <?php endforeach; ?>
                 </tbody>
             </table>
-        </div>
-    <?php else: ?>
-        <p>No search results found.</p>
-    <?php endif; ?>
+        <?php else: ?>
+            <p>No search results found.</p>
+        <?php endif; ?>
+    </div>
 
-    <h2>All Books</h2>
-    <?php if (count($books) > 0): ?>
-        <div class="table-container">
-            <table>
-                <thead>
+    <div id="allBooksTable" class="table-container">
+        <h2>All Books</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>ISBN</th>
+                    <th>Authors</th>
+                    <th>Year</th>
+                    <th>Title</th>
+                    <th>Rating</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($books as $book): ?>
                     <tr>
-                        <th>ID</th>
-                        <th>ISBN</th>
-                        <th>Authors</th>
-                        <th>Original Publication Year</th>
-                        <th>Title</th>
-                        <th>Average Rating</th>
-                        <th>Actions</th>
+                        <td><?php echo htmlspecialchars($book['isbn']); ?></td>
+                        <td><?php echo htmlspecialchars($book['authors']); ?></td>
+                        <td><?php echo htmlspecialchars($book['original_publication_year']); ?></td>
+                        <td><?php echo htmlspecialchars($book['title']); ?></td>
+                        <td><?php echo htmlspecialchars($book['average_rating']); ?></td>
                     </tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($books as $book): ?>
-                        <tr>
-                            <td><?= $book['id'] ?></td>
-                            <td><?= $book['isbn'] ?></td>
-                            <td><?= $book['authors'] ?></td>
-                            <td><?= $book['original_publication_year'] ?></td>
-                            <td><?= $book['title'] ?></td>
-                            <td><?= $book['average_rating'] ?></td>
-                            <td>
-                                <form method="POST" style="display:inline;">
-                                    <input type="hidden" name="action" value="delete">
-                                    <input type="hidden" name="id" value="<?= $book['id'] ?>">
-                                    <button type="submit">Delete</button>
-                                </form>
-                            </td>
-                        </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
-        </div>
-    <?php else: ?>
-        <p>No books found.</p>
-    <?php endif; ?>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+    </div>
+
+    <div id="employeesTable" class="table-container">
+        <h2>Employees</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Employee ID</th>
+                    <th>Name</th>
+                    <th>Position</th>
+                    <th>Department</th>
+                    <th>Salary</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($employees as $employee): ?>
+                    <tr>
+                        <td><?php echo htmlspecialchars($employee['employee_id']); ?></td>
+                        <td><?php echo htmlspecialchars($employee['name']); ?></td>
+                        <td><?php echo htmlspecialchars($employee['position']); ?></td>
+                        <td><?php echo htmlspecialchars($employee['department']); ?></td>
+                        <td><?php echo htmlspecialchars($employee['salary']); ?></td>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        function showTable(tableId) {
+            document.getElementById('booksTable').style.display = 'none';
+            document.getElementById('allBooksTable').style.display = 'none';
+            document.getElementById('employeesTable').style.display = 'none';
+            document.getElementById(tableId).style.display = 'block';
+        }
+
+        // Show books table by default
+        showTable('booksTable');
+    </script>
 </body>
 </html>
+
+<?php
+$conn->close();
+?>

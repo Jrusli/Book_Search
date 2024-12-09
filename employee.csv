@@ -1,0 +1,9 @@
+name, position, department, employee_id, salary
+John Kim, CEO, Management, 1, 100000
+Jane Smith, Manager, Management, 2, 50000
+Alice Clark, Team Leader, Management, 3, 30000
+Bob Lee, team Leader, Management, 4, 30000
+Joshua Rusli, Employee, Librarian, 5, 28000
+Mike Jones, Employee, Librarian, 6, 28000
+Maria Johnson, Employee, Librarian, 7, 28000
+Liz Cho , Employee, Librarian, 8, 28000

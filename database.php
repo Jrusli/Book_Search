@@ -1,15 +1,15 @@
 <?php
-// Configuration: Database connection details
+
 $host = 'localhost';
 $username = 'root';
 $password = ''; // Default password for XAMPP
 $database = 'library_management';
 
 try {
-    // Connect to the database
+   
     $conn = new mysqli($host, $username, $password);
 
-    // Check connection
+  
     if ($conn->connect_error) {
         die("Connection failed: " . $conn->connect_error);
     }
@@ -29,7 +29,7 @@ try {
         throw new mysqli_sql_exception("Dropping table failed: " . $conn->error);
     }
 
-    // Create a "books" table if it does not exist
+    // Create a "books" table only if it doesn't exist
     $createTableQuery = "CREATE TABLE IF NOT EXISTS books (
         id INT AUTO_INCREMENT PRIMARY KEY,
         isbn VARCHAR(20),
@@ -90,14 +90,13 @@ if (file_exists($csvFilePath)) {
     }
 
     fclose($csvFile);
-    // Commented out the message
+
     // echo "CSV data uploaded successfully!";
 } else {
     echo "CSV file not found.";
 }
 
-// Handle search functionality
-// Handle search functionality
+
 $searchResults = [];
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['search'])) {
     $searchCategory = $_GET['category'];
@@ -115,15 +114,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['search'])) {
 $result = $conn->query("SELECT * FROM books ORDER BY created_at DESC");
 $books = $result->fetch_all(MYSQLI_ASSOC);
 
-// Automatically integrate CSV data for employees
-$csvFilePath = 'C:\xampp\htdocs\Library_Search\employee.csv'; // Update this path to the location of your CSV file
+
+$csvFilePath = 'C:\xampp\htdocs\Library_Search\employee.csv'; 
 
 if (file_exists($csvFilePath)) {
     $csvFile = fopen($csvFilePath, 'r');
-    fgetcsv($csvFile); // Skip the header row
+    fgetcsv($csvFile); 
 
     while (($row = fgetcsv($csvFile)) !== FALSE) {
-        // Ensure correct data types
+ 
         $employee_id = (int)$row[0];
         $name = $row[1];
         $position = $row[2];
@@ -145,7 +144,7 @@ if (file_exists($csvFilePath)) {
     echo "CSV file not found.";
 }
 
-// Fetch all employees to display
+
 $result = $conn->query("SELECT * FROM employees ORDER BY employee_id ASC");
 $employees = $result->fetch_all(MYSQLI_ASSOC);
 ?>
@@ -340,7 +339,7 @@ $employees = $result->fetch_all(MYSQLI_ASSOC);
             document.getElementById(tableId).style.display = 'block';
         }
 
-        // Show books table by default
+      
         showTable('booksTable');
     </script>
 </body>

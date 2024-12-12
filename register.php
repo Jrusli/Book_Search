@@ -1,24 +1,24 @@
 <?php
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = $_POST['username'];
-    $password = $_POST['password']; // Store the password as plain text
+    $password = $_POST['password']; 
 
-    $csvFilePath = 'C:\xampp\htdocs\Library_Search\user.csv'; // Update this path to the location of your CSV file
+    $csvFilePath = 'C:\xampp\htdocs\Library_Search\user.csv'; 
 
-    // Check if the file exists
+
     if (!file_exists($csvFilePath)) {
-        // Create the file and add the header row
+
         $file = fopen($csvFilePath, 'w');
         fputcsv($file, ['username', 'password']);
         fclose($file);
     }
 
-    // Append the new user data to the CSV file
+
     $file = fopen($csvFilePath, 'a');
     fputcsv($file, [$username, $password]);
     fclose($file);
 
-    // Redirect to login.php
+
     header("Location: login.php");
     exit();
 }
